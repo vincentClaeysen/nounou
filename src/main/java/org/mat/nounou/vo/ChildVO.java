@@ -1,6 +1,10 @@
 package org.mat.nounou.vo;
 
+import org.mat.nounou.model.Appointment;
+
+import javax.persistence.ManyToMany;
 import javax.xml.bind.annotation.XmlRootElement;
+import java.util.Set;
 
 /**
  * Value Object for a child
@@ -17,6 +21,18 @@ public class ChildVO {
     private String nurseName;
     private Integer nurseId;
     private Integer accountId;
+    private String pictureUrl;
+
+
+
+
+    public String getPictureUrl() {
+        return pictureUrl;
+    }
+
+    public void setPictureUrl(String pictureUrl) {
+        this.pictureUrl = pictureUrl;
+    }
 
     public String getBirthday() {
         return birthday;
@@ -82,8 +98,9 @@ public class ChildVO {
                 ", lastName='" + lastName + '\'' +
                 ", birthday='" + birthday + '\'' +
                 ", nurseName='" + nurseName + '\'' +
-                ", nurseId='" + nurseId + '\'' +
+                ", nurseId=" + nurseId +
                 ", accountId=" + accountId +
+                ", pictureUrl='" + pictureUrl + '\'' +
                 '}';
     }
 }

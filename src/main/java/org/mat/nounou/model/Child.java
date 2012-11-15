@@ -5,6 +5,7 @@ import org.hibernate.annotations.GenericGenerator;
 import javax.persistence.*;
 import javax.xml.bind.annotation.XmlRootElement;
 import java.util.Date;
+import java.util.Set;
 
 /**
  * UserVO: mlecoutre
@@ -23,6 +24,7 @@ public class Child {
     private String firstName;
     private String lastName;
     private Date birthday;
+    private String pictureUrl;
 
     @ManyToOne
     @JoinColumn(name="nurseId", nullable=false)
@@ -31,6 +33,18 @@ public class Child {
     @ManyToOne(optional=false)
     @JoinColumn(name = "accountId", unique = false, nullable = false, updatable = true)
     private Account account;
+
+ /*   @ManyToMany(mappedBy="children", fetch = FetchType.LAZY)
+    private Set<Appointment> appointments;
+*/
+
+    public String getPictureUrl() {
+        return pictureUrl;
+    }
+
+    public void setPictureUrl(String pictureUrl) {
+        this.pictureUrl = pictureUrl;
+    }
 
     public Date getBirthday() {
         return birthday;
@@ -104,8 +118,9 @@ public class Child {
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", birthday=" + birthday +
-                ", nurse=" + nurse +
+                ", pictureUrl='" + pictureUrl + '\'' +
                 ", account=" + account +
+                ", nurse=" + nurse +
                 '}';
     }
 }

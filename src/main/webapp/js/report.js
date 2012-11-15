@@ -1,18 +1,32 @@
 (function ($) {
 
     /** PAGE INITIALIZATION **/
+    $.i18n.init({
+        resGetPath: '/locales/__lng__/__ns__.json',
+        ns: {
+            namespaces: ['report', "commons"],
+            defaultNs: 'report'
+        }
+    }).done(function () {
+        $(".report").i18n();
+        $(".navbar").i18n();
+    });
+
     var value = sessionStorage.getItem('apptoken');
     var accountId = null;
     var userId = null;
-    if (value != null && value != "") {
-        var token = $.parseJSON(value);
-        accountId = token.accountId;
-        userId = token.userId;
-    }
 
     $(document).ready(function () {
+        $('#authBox').initAuthBox();
+        var value = sessionStorage.getItem('apptoken');
+        if (value != null && value != "") {
+            var token = $.parseJSON(value);
+            accountId = token.accountId;
+            userId = token.userId;
+            $('#registerTab a[href="#you"]').tab('show');
+        }
 
-        // Get Last 5 Appointments data
+
         var reqA = $.ajax({
             type: 'GET',
             contentType: 'application/json',
@@ -21,9 +35,12 @@
         });
         reqA.done(function (report) {
             console.log("get last appointments");
-            $('#current').append(Mustache.to_html($('#last-appointments-template').html(), report.appointments));
-            $('#totalMonth').text(report.reportTitle + ': ' + report.totalDuration);
-           chart = new Highcharts.Chart({
+            $('#tableReports').append(Mustache.to_html($('#appointments-template').html(), report.appointments));
+            $(".app-template").i18n({
+                totDuration: report.totalDuration
+            });
+
+            chart = new Highcharts.Chart({
                 chart: {
                     renderTo: 'container'
                 },
@@ -40,9 +57,8 @@
                     formatter: function () {
                         var decTime = this.y;
                         var hour = Math.floor(decTime);
-                        var min = Math.round(60*(decTime-hour));
-                        return $.datepicker.formatDate('yy-mm-dd',(new Date(this.x))) + '=> ' + hour+':'+min;
-
+                        var min = Math.round(60 * (decTime - hour));
+                        return $.datepicker.formatDate('yy-mm-dd', (new Date(this.x))) + '=> ' + hour + ':' + min;
                     }
                 },
                 series: [{
@@ -55,15 +71,8 @@
                     data: report.data,
                     marker: {
                         lineWidth: 2,
-                        //lineColor: Highcharts.getOptions().colors[3],
-                       // fillColor: 'white'
-                    },
-                    tooltip: {
-                        valueDecimals: 2
                     }
-                }
-
-                ]
+                }]
             });
 
         });

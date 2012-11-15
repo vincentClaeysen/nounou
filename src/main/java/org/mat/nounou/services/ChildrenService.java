@@ -1,28 +1,22 @@
 package org.mat.nounou.services;
 
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.Query;
-import javax.persistence.TypedQuery;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
 import org.mat.nounou.model.Account;
 import org.mat.nounou.model.Child;
 import org.mat.nounou.model.Nurse;
 import org.mat.nounou.servlets.EntityManagerLoaderListener;
 import org.mat.nounou.util.Constants;
 import org.mat.nounou.vo.ChildVO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.TypedQuery;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * UserVO: mlecoutre
@@ -33,10 +27,12 @@ import org.mat.nounou.vo.ChildVO;
 @Produces(MediaType.APPLICATION_JSON)
 public class ChildrenService {
 
+    private static final Logger logger = LoggerFactory.getLogger(ChildrenService.class);
+
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public List<ChildVO> get() {
-        System.out.println("Get Child service");
+        logger.debug("Get Child service");
         List<Child> kids = null;
         List<ChildVO> children = new ArrayList<ChildVO>();
         EntityManager em = EntityManagerLoaderListener.createEntityManager();
@@ -45,22 +41,12 @@ public class ChildrenService {
             query.setMaxResults(Constants.MAX_RESULT);
             kids = query.getResultList();
         } catch (NoResultException nre) {
-            System.out.println("No children found in db.");
+            logger.error("No children found in db.");
         } finally {
             em.close();
         }
         for (Child c : kids) {
-            ChildVO vo = new ChildVO();
-            vo.setAccountId(c.getAccount().getAccountId());
-            if (c.getBirthday() != null)
-                vo.setBirthday(Constants.sdfDate.format(c.getBirthday()));
-            vo.setChildId(c.getChildId());
-            vo.setFirstName(c.getFirstName());
-            vo.setLastName(c.getLastName());
-            if (c.getNurse() != null) {
-                vo.setNurseId(c.getNurse().getNurseId());
-                vo.setNurseName(c.getNurse().getFirstName().concat(" ").concat(c.getNurse().getLastName()));
-            }
+            ChildVO vo = populate(c);
             children.add(vo);
         }
         return children;
@@ -70,11 +56,11 @@ public class ChildrenService {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public ChildVO registerKid(ChildVO child) {
-        System.out.println("register Child " + child);
+        logger.debug("register Child " + child);
         Child childEntity = new Child();
         childEntity.setFirstName(child.getFirstName());
         childEntity.setLastName(child.getLastName());
-
+        childEntity.setPictureUrl(child.getPictureUrl());
         EntityManager em = EntityManagerLoaderListener.createEntityManager();
         try {
             childEntity.setBirthday(Constants.sdfDate.parse(child.getBirthday()));
@@ -93,12 +79,54 @@ public class ChildrenService {
             child.setChildId(childEntity.getChildId());
             child.setNurseName(nurse.getFirstName());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("ERROR registerKid", e);
         } finally {
             em.close();
         }
         return child;
     }
+
+
+    @POST
+    @Path("/{childId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public ChildVO updateChild(ChildVO child, @PathParam("childId") Integer childId) {
+        logger.debug("Update Child " + child);
+
+        EntityManager em = EntityManagerLoaderListener.createEntityManager();
+
+        try {
+            TypedQuery<Child> query = em.createQuery("FROM Child WHERE childId=:childId", Child.class);
+            query.setParameter("childId", childId);
+            Child childEntity = query.getSingleResult();
+            childEntity.setFirstName(child.getFirstName());
+            childEntity.setLastName(child.getLastName());
+            childEntity.setBirthday(Constants.sdfDate.parse(child.getBirthday()));
+            TypedQuery<Account> qAccount = em.createQuery("FROM Account a WHERE accountId=:accountId", Account.class);
+            qAccount.setParameter("accountId", child.getAccountId());
+            Account account = qAccount.getSingleResult();
+            childEntity.setAccount(account);
+
+            TypedQuery<Nurse> qNurse = em.createQuery("FROM Nurse n WHERE nurseId=:nurseId", Nurse.class);
+            qNurse.setParameter("nurseId", child.getNurseId());
+            Nurse nurse = qNurse.getSingleResult();
+            childEntity.setNurse(nurse);
+            em.getTransaction().begin();
+            em.persist(childEntity);
+            em.getTransaction().commit();
+            child.setChildId(childEntity.getChildId());
+            child.setNurseName(nurse.getFirstName());
+        }catch (NoResultException nre){
+           logger.warn(String.format("No child with childId:%d to update\n", childId));
+        }catch (Exception e) {
+            logger.error("ERROR in updateChild", e);
+        } finally {
+            em.close();
+        }
+        return child;
+    }
+
 
     @GET
     @Path("/account/{accountId}")
@@ -113,28 +141,38 @@ public class ChildrenService {
 
             //populate vo
             for (Child c : children) {
-                ChildVO vo = new ChildVO();
-                vo.setAccountId(c.getAccount().getAccountId());
-                if (c.getBirthday() != null) //birthday is an optional parameter
-                    vo.setBirthday(Constants.sdfDate.format(c.getBirthday()));
-                vo.setChildId(c.getChildId());
-                vo.setFirstName(c.getFirstName());
-                vo.setLastName(c.getLastName());
-                if (c.getNurse() != null) {
-                    vo.setNurseId(c.getNurse().getNurseId());
-                    vo.setNurseName(c.getNurse().getFirstName().concat(" ").concat(c.getNurse().getLastName()));
-                }
+                ChildVO vo = populate(c);
                 cList.add(vo);
             }
         } catch (NoResultException nre) {
-            System.out.println("No result found for accountId:= " + accountId);
-
+            logger.warn("No result found for accountId:= " + accountId);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("ERROR in findByAccountId", e);
         } finally {
             em.close();
         }
         return cList;
+    }
+
+    /**
+     * Populate the value object wihtin the entity
+     * @param c   the entity
+     * @return    the value object
+     */
+    public static ChildVO populate(Child c) {
+        ChildVO vo = new ChildVO();
+        vo.setAccountId(c.getAccount().getAccountId());
+        if (c.getBirthday() != null) //birthday is an optional parameter
+            vo.setBirthday(Constants.sdfDate.format(c.getBirthday()));
+        vo.setChildId(c.getChildId());
+        vo.setFirstName(c.getFirstName());
+        vo.setLastName(c.getLastName());
+        vo.setPictureUrl(c.getPictureUrl());
+        if (c.getNurse() != null) {
+            vo.setNurseId(c.getNurse().getNurseId());
+            vo.setNurseName(c.getNurse().getFirstName().concat(" ").concat(c.getNurse().getLastName()));
+        }
+        return vo;
     }
 
 
@@ -144,19 +182,39 @@ public class ChildrenService {
         EntityManager em = EntityManagerLoaderListener.createEntityManager();
         try {
             em.getTransaction().begin();
-            Query query = em.createQuery("DELETE FROM Child WHERE childId=:childId");
+            TypedQuery<Child> query = em.createQuery(" FROM Child WHERE childId=:childId", Child.class);
 
             query.setParameter("childId", childId);
-            query.executeUpdate();
+            Child c = query.getSingleResult();
+            em.remove(c);
             em.getTransaction().commit();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("ERROR in deleteById", e);
+            return Response.serverError().build();
         } finally {
             em.close();
         }
         return Response.ok().build();
     }
 
+    @GET
+    @Path("/{childId}")
+    public Response getById(@PathParam("childId") Integer childId) {
+        EntityManager em = EntityManagerLoaderListener.createEntityManager();
+        ChildVO childVO = new ChildVO();
+        try {
+            TypedQuery<Child> query = em.createQuery("FROM Child WHERE childId=:childId", Child.class);
+            query.setParameter("childId", childId);
+            Child c = query.getSingleResult();
+            childVO = populate(c);
+        } catch (Exception e) {
+            logger.error("ERROR in getById", e);
+            return Response.serverError().build();
+        } finally {
+            em.close();
+        }
+        return Response.ok().entity(childVO).build();
+    }
 
 }

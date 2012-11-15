@@ -1,10 +1,12 @@
 package org.mat.nounou.model;
 
+import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.GenericGenerator;
 
 import javax.persistence.*;
 import javax.xml.bind.annotation.XmlRootElement;
 import java.util.Date;
+import java.util.List;
 
 @XmlRootElement
 @Entity
@@ -21,9 +23,9 @@ public class Appointment {
     @JoinColumn(name = "accountId", unique = false, nullable = true)
     private Account account;
 
-    @OneToOne(optional = true)
-    @JoinColumn(name = "kidId", unique = false)
-    private Child child;
+    @ManyToMany
+    @JoinTable(name="app_children")
+    private List<Child> children;
 
     private Date arrivalDate;
     @OneToOne(optional = true)
@@ -167,12 +169,12 @@ public class Appointment {
         this.account = account;
     }
 
-    public Child getChild() {
-        return child;
+    public List<Child> getChildren() {
+        return children;
     }
 
-    public void setChild(Child child) {
-        this.child = child;
+    public void setChildren(List<Child> children) {
+        this.children = children;
     }
 
     @Override
@@ -180,7 +182,7 @@ public class Appointment {
         return "Appointment{" +
                 "appointmentId=" + appointmentId +
                 ", account=" + account +
-                ", child=" + child +
+                ", children=" + children +
                 ", arrivalDate=" + arrivalDate +
                 ", arrivalUser=" + arrivalUser +
                 ", arrivalPlannedDate=" + arrivalPlannedDate +

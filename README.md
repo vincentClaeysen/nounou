@@ -26,7 +26,7 @@ the application is available on heroku http://hello-mlecoutre.herokuapp.com/
 * Rest services
 * JPA
 * CDI (todo)
-* Twitter bootstrap, mustache.js jQuery, HighCharts.js, dbUnit
+* Twitter bootstrap, mustache.js jQuery, HighCharts.js, dbUnit, i18next
     
 ## Running the application locally
 Run your application
@@ -38,3 +38,8 @@ And then run your app using the java command:
 
 $ java -jar target/dependency/webapp-runner.jar target/*.war
 
+## Usefull tools
+* http://jsonformatter.curiousconcept.com/#jsonformatter
+* http://jsbeautifier.org/
+* http://www.codebeautifier.com/?lang=fr
+* http://jsfiddle.net/
